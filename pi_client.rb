@@ -9,11 +9,11 @@ require 'dotenv/load'
 
 EventMachine.run do
   latest_ping_timestamp = 0
-  THIS_DEVICE_GUID = "0f0f4e02-ed27-448c-bfdb-3fcc6e5239d1"
+  THIS_DEVICE_GUID = ENV['DEVICE_GUID']
   username = ENV['HTTP_AUTH_USER']
   password = ENV['HTTP_AUTH_PASS']
   uri = "wss://#{username}:#{password}@pi-controller.herokuapp.com/cable/"
-  uri = "ws://#{username}:#{password}@localhost:3000/cable/"
+  # uri = "ws://#{username}:#{password}@localhost:3000/cable/"
   puts "URL: #{uri}"
   client = ActionCableClient.new(uri, 'EventChannel')
   client.connected { puts 'successfully connected.' } # Required to trigger subscription
@@ -21,7 +21,7 @@ EventMachine.run do
   # called whenever a message is received from the server
   client.received(false) do | message |
     if message['type'] && message['type'] == 'ping'
-      puts "#{Time.current} PING"
+      # puts "#{Time.current} PING"
       latest_ping_timestamp = message['message']
     else
       puts message
