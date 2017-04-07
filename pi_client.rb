@@ -1,13 +1,11 @@
 require 'action_cable_client'
 require 'dotenv/load'
+Dotenv.load('/home/pi/pi_client/.env')
 PI = ENV['PLATFORM'] == 'PI'
 require 'rpi_gpio' if PI
 
-# https://github.com/jwhitehorn/pi_piper
-# https://github.com/ClockVapor/rpi_gpio
 # cron job reboots pi nightly
 # cron job checks most recent ping every minute, pkill job and relaunch
-
 
 EventMachine.run do
   Dotenv.load('/home/pi/pi_client/.env')
@@ -15,15 +13,14 @@ EventMachine.run do
   RPi::GPIO.set_numbering :board if PI # Use pin number printed on board
   THIS_DEVICE_GUID = ENV['DEVICE_GUID']
   PIN_NUM = 11
-  puts "Device GUID: #{THIS_DEVICE_GUID}, Pin: #{PIN_NUM}"
-  username = ENV['HTTP_AUTH_USER']
-  password = ENV['HTTP_AUTH_PASS']
-  uri = "wss://#{username}:#{password}@pi-controller.herokuapp.com/cable/"
-  # uri = "ws://#{username}:#{password}@localhost:3000/cable/"
-  puts "URL: #{uri}"
+  puts "Device GUID: #{THIS_DEVICE_GUID}, Pin: #{PIN_NUM}, PI: #{PI}"
+  base_url = "#{ENV['HTTP_AUTH_USER']}:#{ENV['HTTP_AUTH_PASS']}@#{ENV['CONTROLLER_URL']}"
+  status_url = "http://#{base_url}/api/v1/event_logs/1"
+  websocket_url = "wss://#{base_url}/cable/"
+  puts "URL: #{websocket_url}"
   RPi::GPIO.setup PIN_NUM, as: :output if PI
   RPi::GPIO.set_low PIN_NUM if PI
-  client = ActionCableClient.new(uri, 'EventChannel')
+  client = ActionCableClient.new(websocket_url, 'EventChannel')
   client.connected { puts 'successfully connected.' } # Required to trigger subscription
 
   # called whenever a message is received from the server
@@ -31,7 +28,7 @@ EventMachine.run do
     if message['type'] && message['type'] == 'ping'
       # puts "#{Time.current} PING"
       latest_ping_timestamp = message['message']
-      File.write('/ramdisk/ping', latest_ping_timestamp)
+      File.write('/ramdisk/ping', latest_ping_timestamp) # an external job watches this file, and if the ping gets old it kills this script and reruns it
     else
       puts message
       device_guid = message['message']['device_guid']
@@ -57,7 +54,6 @@ EventMachine.run do
   client.disconnected do
     puts "#{Time.current} DISCONNECTED"
     RPi::GPIO.clean_up if PI
-    # refire connect
   end
 
   client.errored do | message |
@@ -70,7 +66,7 @@ EventMachine.run do
     if (Time.current.to_i - latest_ping_timestamp > 10) || !client.subscribed?
       puts "#{Time.current} No recent pings"
       RPi::GPIO.clean_up if PI
-      abort("Disconnected, exiting...")
+      abort("Disconnected, exiting...") # Ideally we would reconnect to the websocket, but I couldn't figure that out
       client.instance_variable_set("@_websocket_client", EventMachine::WebSocketClient.connect(client._uri))
       client.connected { puts "Attempting to reconnect..." }
       client.subscribed { puts "Subscribed" }
