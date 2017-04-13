@@ -4,10 +4,10 @@ Pi Websockets Client
 ## Intro
 The idea behind this project is to control devices by physically wiring them to Raspberry Pis.  This client is designed to subscribe to a [websocket API](https://github.com/StephenWetzel/pi-controller) I built, and respond to events that are broadcast by it.
 
-My current use case is a Raspberry Pi Zero W with pin 11 wired up to the base of a transistor that shorts a normally open push button switch, thus turning it on.
+My current use case is a Raspberry Pi Zero W with pin 11 wired up to the base of a transistor that shorts a normally open push button switch, thus turning something on.
 
 ## Notes
-I'm using [this gem](https://github.com/NullVoxPopuli/action_cable_client) for websockets clients.  It works well, but doesn't seem to support reconnecting when a connection is lost.  My work around for this is to write the timestamp from each ping to a file.  I then have a separate bash script (check_ping.sh) with runs every minute via cron and checks for the age of the last ping.  If it's old it'll kill this process and relaunch.  Not terrible elegant, but it works well, and makes the client rather robust.  Lastly, I set the Pi to restart every night at 3am via cron.
+I'm using [this gem](https://github.com/NullVoxPopuli/action_cable_client) for websockets clients.  It works well, but doesn't seem to support reconnecting when a connection is lost.  My workaround for this is to write the timestamp from each ping to a file (they come every 3 seconds).  I then have a separate bash script (check_ping.sh) which runs every minute via cron and checks for the age of the last ping.  If the ping is old it'll kill this process and relaunch.  Not terribly elegant, but it works well, and makes the client rather robust.  Lastly, I set the Pi to restart every night at 3am via cron.
 
 I launch the ruby script on boot via @reboot cron.  The check_ping.sh will also start it up, but there will be a longer delay.
 
