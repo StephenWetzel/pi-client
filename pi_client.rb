@@ -28,7 +28,7 @@ EventMachine.run do
     if message['type'] && message['type'] == 'ping'
       # puts "#{Time.current} PING"
       latest_ping_timestamp = message['message']
-      File.write('/ramdisk/ping', latest_ping_timestamp) # an external job watches this file, and if the ping gets old it kills this script and reruns it
+      File.write('/ramdisk/ping', latest_ping_timestamp) if PI # an external job watches this file, and if the ping gets old it kills this script and reruns it
     else
       puts message
       device_guid = message['message']['device_guid']
